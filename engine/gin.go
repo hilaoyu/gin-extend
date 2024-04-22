@@ -9,11 +9,10 @@ import (
 
 type GinEngine struct {
 	*gin.Engine
-	sessionStore sessions.Store
 }
 
 func NewGinEngine() (e *GinEngine) {
-	e = &GinEngine{gin.New(), nil}
+	e = &GinEngine{gin.New()}
 	return
 }
 
@@ -23,7 +22,6 @@ func (e *GinEngine) UseDefault() *GinEngine {
 }
 
 func (e *GinEngine) UseSessions(store sessions.Store, name string, regStructs ...any) *GinEngine {
-	e.sessionStore = store
 	e.Use(sessions.Sessions(name, store))
 	if len(regStructs) > 0 {
 		for s, _ := range regStructs {
