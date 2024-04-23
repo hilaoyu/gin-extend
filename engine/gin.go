@@ -20,6 +20,14 @@ func (e *GinEngine) UseDefault() *GinEngine {
 	e.Use(gin.Logger(), gin.Recovery())
 	return e
 }
+func (e *GinEngine) Debug(debug bool) *GinEngine {
+	if debug {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	return e
+}
 
 func (e *GinEngine) UseSessions(store sessions.Store, name string, regStructs ...any) *GinEngine {
 	e.Use(sessions.Sessions(name, store))
