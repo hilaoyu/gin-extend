@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/gin-contrib/multitemplate"
 	"path/filepath"
+	"strings"
 )
 
 type GinTemplate = struct {
@@ -10,7 +11,7 @@ type GinTemplate = struct {
 	Layout string `json:"layout"`
 }
 
-func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate) (err error) {
+func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate, templateBasePath string) (err error) {
 	r := multitemplate.NewRenderer()
 
 	for _, t := range templates {
@@ -33,7 +34,12 @@ func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate) (err error) {
 			layoutCopy := make([]string, len(layouts))
 			copy(layoutCopy, layouts)
 			files := append(layoutCopy, file)
-			r.AddFromFiles(filepath.Base(file), files...)
+			templateName := filepath.Base(file)
+			if "" != templateBasePath {
+				templateName = strings.TrimPrefix(file, templateBasePath)
+			}
+			templateName = strings.TrimLeft(templateName, "/")
+			r.AddFromFiles(templateName, files...)
 		}
 
 	}
