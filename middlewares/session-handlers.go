@@ -9,10 +9,8 @@ import (
 func SessionHandler(before func(s sessions.Session, c *gin.Context), after func(s sessions.Session, c *gin.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		session, err := engine.GetSessions(c)
-		if nil != err {
-			c.AbortWithError(500, err)
-		}
+		session, _ := engine.GetSession(c)
+
 		before(session, c)
 		c.Next()
 		// 请求后

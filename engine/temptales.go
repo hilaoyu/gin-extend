@@ -2,8 +2,10 @@ package engine
 
 import (
 	"github.com/gin-contrib/multitemplate"
+	"html/template"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type GinTemplate = struct {
@@ -45,5 +47,11 @@ func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate, templateBasePath 
 	}
 
 	e.HTMLRender = r
+
+	e.SetFuncMap(template.FuncMap{
+		"formatCurrentTime": func(layout string) string {
+			return time.Now().Format(layout)
+		},
+	})
 	return
 }

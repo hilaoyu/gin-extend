@@ -7,25 +7,40 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (e *GinEngine) UseSessions(store sessions.Store, name string, regStructs ...any) *GinEngine {
-	e.Use(sessions.Sessions(name, store))
+func (e *GinEngine) UseSessions(store sessions.Store, name string, options sessions.Options, regStructs ...any) *GinEngine {
+
 	if len(regStructs) > 0 {
 		for s, _ := range regStructs {
 			gob.Register(s)
 		}
 	}
+	store.Options(options)
+	e.Use(sessions.Sessions(name, store))
 	return e
 }
 
-func GetSessions(c *gin.Context) (session sessions.Session, err error) {
-	ginSession, exists := c.Get(sessions.DefaultKey)
-	if !exists {
-		err = fmt.Errorf("session not enabled")
+func GetSession(c *gin.Context) (session sessions.Session, err error) {
+	session = sessions.Default(c)
+	if nil == session {
+		err = fmt.Errorf("session not fond")
 		return
 	}
-	session, ok := ginSession.(sessions.Session)
-	if !ok {
-		err = fmt.Errorf("session type error")
+	return
+}
+func SaveSession(c *gin.Context) (err error) {
+	session := sessions.Default(c)
+	if nil == session {
+		return
 	}
+	session.Save()
+	return
+}
+func ClearSession(c *gin.Context) (err error) {
+	session := sessions.Default(c)
+	if nil == session {
+		return
+	}
+	session.Clear()
+	session.Save()
 	return
 }

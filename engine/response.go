@@ -117,7 +117,7 @@ func (res *Response) RenderApiJson(gc *gin.Context) {
 	data := utilHttp.ApiReturnJson{
 		Status:  res.Status,
 		Code:    res.StatusCode,
-		Message: "",
+		Message: res.Message,
 		Errors:  res.Errors,
 	}
 
@@ -154,6 +154,5 @@ func (res *Response) RenderHtml(templateName string, gc *gin.Context) {
 	}
 
 	gc.HTML(res.StatusCode, templateName, data)
-
 	return
 }
