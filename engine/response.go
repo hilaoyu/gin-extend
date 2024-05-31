@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hilaoyu/go-utils/utilHttp"
 	"strings"
@@ -21,6 +22,8 @@ type Response struct {
 const (
 	ContextVariablesKeyResponse = "_gin_extend_context_variables_key_response"
 )
+
+var ErrorPageTemplates map[string]string
 
 func GetResponse(gc *gin.Context) (response *Response) {
 	tmp, exist := gc.Get(ContextVariablesKeyResponse)
@@ -123,8 +126,6 @@ func (res *Response) RenderApiJson(gc *gin.Context) {
 
 	if nil != res.Data {
 		data.Data = res.Data
-	} else {
-		data.Data = res.Variables
 	}
 	if len(res.Debugs) > 0 {
 		data.Debug = res.Debugs
@@ -155,4 +156,46 @@ func (res *Response) RenderHtml(templateName string, gc *gin.Context) {
 
 	gc.HTML(res.StatusCode, templateName, data)
 	return
+}
+
+func (res *Response) RenderErrorPage(errorType string, gc *gin.Context) {
+	if nil == gc {
+		gc = res.gc
+	}
+	if nil == gc {
+		return
+	}
+
+	templateName, ok := ErrorPageTemplates[errorType]
+	if !ok {
+		gc.AbortWithError(res.StatusCode, fmt.Errorf(res.Message))
+		return
+	}
+
+	data := res.Variables
+	if len(res.Debugs) > 0 {
+		data["_debug"] = res.Debugs
+	}
+	if len(res.Errors) > 0 {
+		if _, ok := data["errors"]; !ok {
+			data["errors"] = res.Errors
+		}
+	}
+	data["message"] = res.Message
+	data["_prev_url"] = gc.Request.Referer()
+
+	gc.HTML(res.StatusCode, templateName, data)
+	gc.Abort()
+	return
+}
+
+func SetErrorPageTemplates(templates map[string]string) {
+	ErrorPageTemplates = templates
+}
+
+func AddErrorPageTemplates(errorType string, template string) {
+	if nil == ErrorPageTemplates {
+		ErrorPageTemplates = map[string]string{}
+	}
+	ErrorPageTemplates[errorType] = template
 }
