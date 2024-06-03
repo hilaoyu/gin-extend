@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"github.com/gin-contrib/multitemplate"
 	"html/template"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,6 +18,27 @@ type GinTemplate = struct {
 
 func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate, templateBasePath string) (err error) {
 	e.SetFuncMap(template.FuncMap{
+		"include": func(name string, args map[string]interface{}, additionalArgs ...interface{}) template.HTML {
+			cb, err1 := os.ReadFile(filepath.Join(templateBasePath, name))
+			if nil != err1 {
+				return ""
+			}
+			var w strings.Builder
+			for i, arg := range additionalArgs {
+				args["_props_arg_"+strconv.Itoa(i)] = arg
+			}
+			tmpl, err1 := template.New(name).
+				Funcs(e.FuncMap).
+				Parse(string(cb))
+			if nil != err1 {
+				return ""
+			}
+			err1 = tmpl.Execute(&w, args)
+			if nil != err1 {
+				return ""
+			}
+			return template.HTML(w.String())
+		},
 		"formatCurrentTime": func(layout string) string {
 			return time.Now().Format(layout)
 		},
