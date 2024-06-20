@@ -100,15 +100,9 @@ func ApiCheckAesHandler(getSecret GetSecretFunc, debug ...bool) gin.HandlerFunc 
 }
 
 func ApiCheckAesGetEnData(gc *gin.Context) string {
-
 	return gc.GetString(ApiCheckAesApiDataKey)
 }
 func ApiCheckAesGetEncryptor(gc *gin.Context) (encryptor *utilEnc.AesEncryptor, err error) {
-	enData := gc.GetString(ApiCheckAesApiDataKey)
-	if "" == enData {
-		err = fmt.Errorf("密文数据为空")
-		return
-	}
 	encryptorTemp, exist := gc.Get(ApiCheckAesEncryptorKey)
 	if !exist {
 		err = fmt.Errorf("加密器不存在")
@@ -134,5 +128,13 @@ func ApiCheckAesDecryptData(gc *gin.Context, v interface{}) (err error) {
 	}
 
 	err = encryptor.Decrypt(enData, v)
+	return
+}
+func ApiCheckAesEncryptData(gc *gin.Context, data interface{}) (enData string, err error) {
+	encryptor, err := ApiCheckAesGetEncryptor(gc)
+	if nil != err {
+		return
+	}
+	enData, err = encryptor.Encrypt(data)
 	return
 }
