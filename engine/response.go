@@ -86,7 +86,8 @@ func (res *Response) SetData(v interface{}) *Response {
 	return res
 }
 
-func (res *Response) RenderJson(gc *gin.Context) {
+func (res *Response) RenderJson(c *gin.Context) {
+	gc := c
 	if nil == gc {
 		gc = res.gc
 	}
@@ -109,7 +110,8 @@ func (res *Response) RenderJson(gc *gin.Context) {
 	gc.JSON(res.StatusCode, data)
 	return
 }
-func (res *Response) RenderApiJson(gc *gin.Context) {
+func (res *Response) RenderApiJson(c *gin.Context) {
+	gc := c
 	if nil == gc {
 		gc = res.gc
 	}
@@ -136,7 +138,8 @@ func (res *Response) RenderApiJson(gc *gin.Context) {
 	gc.JSON(200, data)
 	return
 }
-func (res *Response) RenderHtml(templateName string, gc *gin.Context) {
+func (res *Response) RenderHtml(templateName string, c *gin.Context) {
+	gc := c
 	if nil == gc {
 		gc = res.gc
 	}
@@ -158,7 +161,8 @@ func (res *Response) RenderHtml(templateName string, gc *gin.Context) {
 	return
 }
 
-func (res *Response) RenderErrorPage(errorType string, gc *gin.Context) {
+func (res *Response) RenderErrorPage(errorType string, c *gin.Context) {
+	gc := c
 	if nil == gc {
 		gc = res.gc
 	}
