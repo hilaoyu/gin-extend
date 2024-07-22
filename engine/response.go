@@ -119,7 +119,7 @@ func (res *Response) RenderApiJson(c *gin.Context) {
 		return
 	}
 
-	data := utilHttp.ApiReturnJson{
+	data := utilHttp.ApiDataJson{
 		Status:  res.Status,
 		Code:    res.StatusCode,
 		Message: res.Message,
