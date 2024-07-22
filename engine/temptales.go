@@ -73,6 +73,7 @@ func (e *GinEngine) UseMultiTemplate(templates []*GinTemplate, templateBasePath 
 			if "" != templateBasePath {
 				templateName = strings.TrimPrefix(file, templateBasePath)
 			}
+			templateName = strings.ReplaceAll(templateName, "\\", "/")
 			templateName = strings.TrimLeft(templateName, "/")
 			r.AddFromFilesFuncs(templateName, e.FuncMap, files...)
 		}
