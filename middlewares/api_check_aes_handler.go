@@ -23,8 +23,8 @@ func ApiCheckAesHandler(getSecret GetSecretFunc, debug ...bool) gin.HandlerFunc 
 		response := engine.GetResponse(c)
 
 		if "get" == c.Request.Method {
-			appId = c.GetString("app_id")
-			apiData = c.GetString("data")
+			appId = c.DefaultQuery("app_id", "")
+			apiData = c.DefaultQuery("data", "")
 		} else {
 			var input = struct {
 				AppId string `json:"app_id,omitempty" form:"app_id"`
