@@ -12,7 +12,7 @@ import (
 const ApiCheckAesApiDataKey = "_api_check_aes_api_data"
 const ApiCheckAesEncryptorKey = "_api_check_aes_encryptor"
 
-type GetSecretFunc func(appId string) (secret string, err error)
+type GetSecretFunc func(appId string, gc *gin.Context) (secret string, err error)
 
 var dataIdCache = utilCache.NewCache("_api_check_aes_api_data_id_", time.Duration(5)*time.Minute).RegisterStoreMemory(10000)
 
@@ -43,7 +43,7 @@ func ApiCheckAesHandler(getSecret GetSecretFunc, debug ...bool) gin.HandlerFunc 
 
 		//fmt.Println(appId, apiData)
 
-		secret, err := getSecret(appId)
+		secret, err := getSecret(appId, c)
 		if err != nil {
 			response.Failed(fmt.Sprintf("解密错误: %v", err)).RenderApiJson(c)
 			c.Abort()
