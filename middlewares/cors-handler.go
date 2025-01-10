@@ -3,6 +3,7 @@ package middlewares
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"strings"
 	"time"
 )
 
@@ -34,6 +35,12 @@ func CorsHandler(config *CorsConfig) gin.HandlerFunc {
 			for _, ah := range config.AllowHeaders {
 				if "*" == ah {
 					for hk, _ := range gc.Request.Header {
+						if "Access-Control-Request-Headers" == hk {
+							for _, ahk := range strings.Split(gc.GetHeader(hk), ",") {
+								ginCorsConfig.AddAllowHeaders(ahk)
+							}
+							continue
+						}
 						ginCorsConfig.AddAllowHeaders(hk)
 					}
 					continue
