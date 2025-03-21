@@ -106,6 +106,9 @@ func ApiCheckGetEncryptor(gc *gin.Context) (encryptor utilEnc.ApiDataEncryptor, 
 	case utilEnc.ApiDataEncryptorTypeRsa:
 		encryptor, ok = encryptorTemp.(*utilEnc.RsaEncryptor)
 		break
+	case utilEnc.ApiDataEncryptorTypeGm:
+		encryptor, ok = encryptorTemp.(*utilEnc.GmEncryptor)
+		break
 	}
 
 	if !ok {
@@ -155,6 +158,27 @@ func ApiCheckGetRsaEncryptor(gc *gin.Context) (encryptor *utilEnc.RsaEncryptor, 
 
 	return
 }
+func ApiCheckGetGmEncryptor(gc *gin.Context) (encryptor *utilEnc.GmEncryptor, err error) {
+
+	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
+	if !exist {
+		err = fmt.Errorf("加密器不存在")
+		return
+	}
+	encryptorType := gc.GetString(ApiCheckEncryptorTypeKey)
+	if utilEnc.ApiDataEncryptorTypeGm != encryptorType {
+		err = fmt.Errorf("加密器类型不是GM")
+		return
+	}
+
+	encryptor, ok := encryptorTemp.(*utilEnc.GmEncryptor)
+	if !ok {
+		err = fmt.Errorf("加密器类型错误")
+	}
+
+	return
+}
+
 func ApiCheckDecryptData(gc *gin.Context, v interface{}) (err error) {
 	enData := ApiCheckGetEnData(gc)
 	if "" == enData {
