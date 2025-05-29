@@ -1,29 +1,49 @@
 package engine
 
 import (
+	"encoding/gob"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hilaoyu/go-utils/utilHttp"
 	"strings"
 )
 
-type Response struct {
-	gc         *gin.Context
-	Status     bool
-	StatusCode int
-	Message    string
-
-	Debugs    []string
-	Errors    []string
-	Variables map[string]interface{}
-	Data      interface{}
-}
-
 const (
-	ContextVariablesKeyResponse = "_gin_extend_context_variables_key_response"
+	ContextVariablesKeyResponse    = "_gin_extend_context_variables_key_response"
+	ContextSessionKeyErrors        = "_gin_extend_res_session_errors"
+	ContextSessionKeyAlertMessages = "_gin_extend_res_session_alert_messages"
+	ContextSessionKeyVariables     = "_gin_extend_res_session_variables"
+	ContextSessionKeyData          = "_gin_extend_res_session_data"
 )
 
-var ErrorPageTemplates map[string]string
+type Response struct {
+	gc            *gin.Context
+	status        bool
+	statusCode    int
+	message       string
+	alertMessages []*ResponseAlertMessage
+
+	debugs    []string
+	errors    []string
+	variables ResponseVariables
+	data      interface{}
+}
+type ResponseVariables map[string]interface{}
+
+type ResponseAlertMessage struct {
+	AlertType    string
+	AlertMessage string
+}
+
+var (
+	ErrorPageTemplates map[string]string
+)
+
+func init() {
+	gob.Register(&ResponseAlertMessage{})
+	gob.Register([]*ResponseAlertMessage{})
+	gob.Register(ResponseVariables{})
+}
 
 func GetResponse(gc *gin.Context) (response *Response) {
 	tmp, exist := gc.Get(ContextVariablesKeyResponse)
@@ -35,42 +55,107 @@ func GetResponse(gc *gin.Context) (response *Response) {
 
 	if nil == response {
 		response = &Response{
-			gc:        gc,
-			Variables: map[string]interface{}{},
+			gc:         gc,
+			statusCode: 200,
+			variables:  map[string]interface{}{},
 		}
 		gc.Set(ContextVariablesKeyResponse, response)
+	}
+
+	session, _ := GetSession(gc)
+	if nil != session {
+		sessionErrors := session.Get(ContextSessionKeyErrors)
+		if nil != sessionErrors {
+			if errors, ok := sessionErrors.([]string); ok {
+				response.errors = errors
+			}
+		}
+		session.Delete(ContextSessionKeyErrors)
+
+		sessionAlertMessages := session.Get(ContextSessionKeyAlertMessages)
+		if nil != sessionAlertMessages {
+			if alertMessages, ok := sessionAlertMessages.([]*ResponseAlertMessage); ok {
+				response.alertMessages = alertMessages
+			}
+		}
+		session.Delete(ContextSessionKeyAlertMessages)
+
+		sessionVariables := session.Get(ContextSessionKeyVariables)
+		if nil != sessionVariables {
+			if variables, ok := sessionVariables.(map[string]interface{}); ok {
+				response.variables = variables
+			}
+		}
+		session.Delete(ContextSessionKeyVariables)
+
+		sessionData := session.Get(ContextSessionKeyData)
+		if nil != sessionVariables {
+			response.data = sessionData
+		}
+		session.Delete(ContextSessionKeyData)
+
+		_ = session.Save()
 	}
 
 	return
 }
 
 func (res *Response) Success(msg string, code ...int) *Response {
-	res.Status = true
-	res.Message = msg
+	res.status = true
+	res.message = msg
 	if len(code) > 0 {
-		res.StatusCode = code[0]
+		res.statusCode = code[0]
 	} else {
-		res.StatusCode = 200
+		res.statusCode = 200
 	}
 	return res
 }
 func (res *Response) Failed(msg string, code ...int) *Response {
-	res.Status = false
-	res.Message = msg
+	res.status = false
+	res.message = msg
 	if len(code) > 0 {
-		res.StatusCode = code[0]
+		res.statusCode = code[0]
 	} else {
-		res.StatusCode = 501
+		res.statusCode = 501
 	}
 	return res
 }
 
+func (res *Response) AlertSuccess(msg string) *Response {
+	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
+		AlertType:    "success",
+		AlertMessage: msg,
+	})
+	return res
+}
+func (res *Response) AlertError(msg string) *Response {
+	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
+		AlertType:    "error",
+		AlertMessage: msg,
+	})
+	return res
+}
+func (res *Response) AlertWarning(msg string) *Response {
+	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
+		AlertType:    "warning",
+		AlertMessage: msg,
+	})
+	return res
+}
+func (res *Response) AlertInfo(msg string) *Response {
+	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
+		AlertType:    "info",
+		AlertMessage: msg,
+	})
+	return res
+}
+
 func (res *Response) WithDebug(v string) *Response {
-	res.Debugs = append(res.Debugs, v)
+	res.debugs = append(res.debugs, v)
 	return res
 }
 func (res *Response) WithError(v string) *Response {
-	res.Errors = append(res.Errors, v)
+	res.errors = append(res.errors, v)
 	return res
 }
 func (res *Response) WithVariables(v interface{}, k string) *Response {
@@ -78,11 +163,11 @@ func (res *Response) WithVariables(v interface{}, k string) *Response {
 	if "" == k {
 		return res
 	}
-	res.Variables[k] = v
+	res.variables[k] = v
 	return res
 }
 func (res *Response) SetData(v interface{}) *Response {
-	res.Data = v
+	res.data = v
 	return res
 }
 
@@ -94,20 +179,20 @@ func (res *Response) RenderJson(c *gin.Context) {
 	if nil == gc {
 		return
 	}
-	if nil != res.Data {
-		gc.JSON(res.StatusCode, res.Data)
+	if nil != res.data {
+		gc.JSON(res.statusCode, res.data)
 		return
 	}
-	data := res.Variables
-	if len(res.Debugs) > 0 {
-		data["_debug"] = res.Debugs
+	data := res.variables
+	if len(res.debugs) > 0 {
+		data["_debug"] = res.debugs
 	}
-	if len(res.Errors) > 0 {
+	if len(res.errors) > 0 {
 		if _, ok := data["errors"]; !ok {
-			data["errors"] = res.Errors
+			data["errors"] = res.errors
 		}
 	}
-	gc.JSON(res.StatusCode, data)
+	gc.JSON(res.statusCode, data)
 	return
 }
 func (res *Response) RenderApiJson(c *gin.Context) {
@@ -120,51 +205,55 @@ func (res *Response) RenderApiJson(c *gin.Context) {
 	}
 
 	data := utilHttp.ApiDataJson{
-		Status:  res.Status,
-		Code:    res.StatusCode,
-		Message: res.Message,
-		Errors:  res.Errors,
+		Status:  res.status,
+		Code:    res.statusCode,
+		Message: res.message,
+		Errors:  res.errors,
 	}
 
-	if nil != res.Data {
-		data.Data = res.Data
+	if nil != res.data {
+		data.Data = res.data
 	}
-	if len(res.Debugs) > 0 {
-		data.Debug = res.Debugs
+	if len(res.debugs) > 0 {
+		data.Debug = res.debugs
 	}
-	if len(res.Errors) > 0 {
-		data.Errors = res.Errors
+	if len(res.errors) > 0 {
+		data.Errors = res.errors
 	}
 	gc.JSON(200, data)
 	return
 }
-func (res *Response) RenderHtml(templateName string, c *gin.Context) {
-	gc := c
-	if nil == gc {
-		gc = res.gc
+func (res *Response) RenderHtml(templateName string, c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
 	}
 	if nil == gc {
 		return
 	}
 
-	data := res.Variables
-	if len(res.Debugs) > 0 {
-		data["_debug"] = res.Debugs
+	data := res.variables
+	if len(res.message) > 0 {
+		data["_message"] = res.message
 	}
-	if len(res.Errors) > 0 {
-		if _, ok := data["errors"]; !ok {
-			data["errors"] = res.Errors
-		}
+	if len(res.debugs) > 0 {
+		data["_debug"] = res.debugs
+	}
+	if len(res.errors) > 0 {
+		data["_errors"] = res.errors
+	}
+	if len(res.alertMessages) > 0 {
+		data["_alert_messages"] = res.alertMessages
 	}
 
-	gc.HTML(res.StatusCode, templateName, data)
+	gc.HTML(res.statusCode, templateName, data)
 	return
 }
 
-func (res *Response) RenderErrorPage(errorType string, c *gin.Context) {
-	gc := c
-	if nil == gc {
-		gc = res.gc
+func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
 	}
 	if nil == gc {
 		return
@@ -172,24 +261,74 @@ func (res *Response) RenderErrorPage(errorType string, c *gin.Context) {
 
 	templateName, ok := ErrorPageTemplates[errorType]
 	if !ok {
-		gc.AbortWithError(res.StatusCode, fmt.Errorf(res.Message))
+		gc.AbortWithError(res.statusCode, fmt.Errorf(res.message))
 		return
 	}
 
-	data := res.Variables
-	if len(res.Debugs) > 0 {
-		data["_debug"] = res.Debugs
+	data := res.variables
+	if len(res.debugs) > 0 {
+		data["_debug"] = res.debugs
 	}
-	if len(res.Errors) > 0 {
-		if _, ok := data["errors"]; !ok {
-			data["errors"] = res.Errors
-		}
+	if len(res.errors) > 0 {
+		data["_errors"] = res.errors
 	}
-	data["message"] = res.Message
+
+	if len(res.alertMessages) > 0 {
+		data["_alert_messages"] = res.alertMessages
+	}
+	data["_message"] = res.message
 	data["_prev_url"] = gc.Request.Referer()
 
-	gc.HTML(res.StatusCode, templateName, data)
+	gc.HTML(res.statusCode, templateName, data)
 	gc.Abort()
+	return
+}
+
+func (res *Response) Redirect(code int, location string, c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
+	}
+	if nil == gc {
+		return
+	}
+
+	session, _ := GetSession(gc)
+	if nil != session {
+
+		if len(res.errors) > 0 {
+			session.Set(ContextSessionKeyErrors, res.errors)
+		}
+		if len(res.alertMessages) > 0 {
+			session.Set(ContextSessionKeyAlertMessages, res.alertMessages)
+		}
+		if len(res.variables) > 0 {
+			session.Set(ContextSessionKeyVariables, res.variables)
+		}
+		if nil != res.data {
+			session.Set(ContextSessionKeyData, res.data)
+		}
+		_ = session.Save()
+	}
+
+	gc.Redirect(code, location)
+	return
+}
+func (res *Response) Abort(c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
+	}
+	if nil == gc {
+		return
+	}
+
+	if !res.status {
+		_ = gc.AbortWithError(res.statusCode, fmt.Errorf(res.message))
+	} else {
+		gc.Abort()
+	}
+
 	return
 }
 
