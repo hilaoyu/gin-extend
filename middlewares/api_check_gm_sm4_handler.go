@@ -7,9 +7,9 @@ import (
 	"github.com/hilaoyu/go-utils/utilEnc"
 )
 
-type GetAesSecretFunc func(appId string, gc *gin.Context) (secret string, err error)
+type GetGmSm4SecretFunc func(appId string, gc *gin.Context) (secret string, err error)
 
-func ApiCheckAesHandler(getSecret GetAesSecretFunc, debug ...bool) gin.HandlerFunc {
+func ApiCheckGmSm4Handler(getSecret GetGmSm4SecretFunc, debug ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		response := engine.GetResponse(c)

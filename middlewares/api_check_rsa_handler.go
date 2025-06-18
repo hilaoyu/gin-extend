@@ -22,7 +22,7 @@ func ApiCheckRsaHandler(getRsaKey GetRsaKeyFunc, debug ...bool) gin.HandlerFunc 
 		//fmt.Println(appId, apiData)
 
 		publicKey, privateKey, err := getRsaKey(appId, c)
-	
+
 		if err != nil {
 			response.Failed(fmt.Sprintf("读取解密密钥错误: %v", err)).RenderApiJson(c)
 			c.Abort()
@@ -44,7 +44,7 @@ func ApiCheckRsaHandler(getRsaKey GetRsaKeyFunc, debug ...bool) gin.HandlerFunc 
 			return
 		}
 
-		err = apiCheck(apiData, encryptor, utilEnc.ApiDataEncryptorTypeRsa, c, debug...)
+		err = apiCheck(apiData, encryptor, c, debug...)
 		if err != nil {
 			response.Failed(err.Error()).RenderApiJson(c)
 			c.Abort()

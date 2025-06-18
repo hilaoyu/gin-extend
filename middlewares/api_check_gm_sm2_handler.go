@@ -7,9 +7,9 @@ import (
 	"github.com/hilaoyu/go-utils/utilEnc"
 )
 
-type GetGmKeyFunc func(appId string, gc *gin.Context) (publicKey []byte, privateKey []byte, err error)
+type GetGmSm2KeyFunc func(appId string, gc *gin.Context) (publicKey []byte, privateKey []byte, err error)
 
-func ApiCheckGmHandler(getRsaKey GetGmKeyFunc, debug ...bool) gin.HandlerFunc {
+func ApiCheckGmSm2Handler(getRsaKey GetGmSm2KeyFunc, debug ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := engine.GetResponse(c)
 
@@ -29,7 +29,7 @@ func ApiCheckGmHandler(getRsaKey GetGmKeyFunc, debug ...bool) gin.HandlerFunc {
 			return
 		}
 
-		encryptor := utilEnc.NewGmEncryptor()
+		encryptor := utilEnc.NewGmSm2Encryptor()
 		_, err = encryptor.SetSm2PublicKey(publicKey)
 		if err != nil {
 			response.Failed(fmt.Sprintf("设置公钥错误: %v", err)).RenderApiJson(c)
@@ -44,7 +44,7 @@ func ApiCheckGmHandler(getRsaKey GetGmKeyFunc, debug ...bool) gin.HandlerFunc {
 			return
 		}
 
-		err = apiCheck(apiData, encryptor, utilEnc.ApiDataEncryptorTypeGm, c, debug...)
+		err = apiCheck(apiData, encryptor, c, debug...)
 		if err != nil {
 			response.Failed(err.Error()).RenderApiJson(c)
 			c.Abort()

@@ -10,7 +10,6 @@ import (
 
 const ApiCheckApiDataKey = "_api_check_api_data"
 const ApiCheckEncryptorKey = "_api_check_encryptor"
-const ApiCheckEncryptorTypeKey = "_api_check_encryptor_type"
 
 var (
 	dataIdCacheApiCheck = utilCache.NewCache("_api_check_api_data_id_", time.Duration(5)*time.Minute).RegisterStoreMemory(10000)
@@ -36,7 +35,7 @@ func apiCheckGetDataFromGc(gc *gin.Context) (apiData string, appId string, err e
 	}
 	return
 }
-func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, encryptorType string, gc *gin.Context, debug ...bool) (err error) {
+func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, gc *gin.Context, debug ...bool) (err error) {
 	data := struct {
 		DataId       string `json:"_data_id"`
 		Timestamp    int64  `json:"_timestamp"`
@@ -74,16 +73,15 @@ func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, encryptorType 
 	}
 
 	apiCheckSetEnData(gc, apiData)
-	apiCheckSetEncryptor(gc, encryptor, encryptorType)
+	apiCheckSetEncryptor(gc, encryptor)
 	return
 }
 
 func apiCheckSetEnData(gc *gin.Context, apiData string) {
 	gc.Set(ApiCheckApiDataKey, apiData)
 }
-func apiCheckSetEncryptor(gc *gin.Context, encryptor utilEnc.ApiDataEncryptor, encryptorType string) {
+func apiCheckSetEncryptor(gc *gin.Context, encryptor utilEnc.ApiDataEncryptor) {
 	gc.Set(ApiCheckEncryptorKey, encryptor)
-	gc.Set(ApiCheckEncryptorTypeKey, encryptorType)
 
 }
 
@@ -91,28 +89,15 @@ func ApiCheckGetEnData(gc *gin.Context) string {
 	return gc.GetString(ApiCheckApiDataKey)
 }
 func ApiCheckGetEncryptor(gc *gin.Context) (encryptor utilEnc.ApiDataEncryptor, err error) {
-	encryptorType := gc.GetString(ApiCheckEncryptorTypeKey)
-
 	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
 	if !exist {
 		err = fmt.Errorf("加密器不存在")
 		return
 	}
 	var ok bool
-	switch encryptorType {
-	case utilEnc.ApiDataEncryptorTypeAes:
-		encryptor, ok = encryptorTemp.(*utilEnc.AesEncryptor)
-		break
-	case utilEnc.ApiDataEncryptorTypeRsa:
-		encryptor, ok = encryptorTemp.(*utilEnc.RsaEncryptor)
-		break
-	case utilEnc.ApiDataEncryptorTypeGm:
-		encryptor, ok = encryptorTemp.(*utilEnc.GmEncryptor)
-		break
-	}
-
+	encryptor, ok = encryptorTemp.(utilEnc.ApiDataEncryptor)
 	if !ok {
-		err = fmt.Errorf("加密器类型错误")
+		err = fmt.Errorf("加密器错误")
 	}
 
 	return
@@ -120,13 +105,11 @@ func ApiCheckGetEncryptor(gc *gin.Context) (encryptor utilEnc.ApiDataEncryptor, 
 
 func ApiCheckGetAesEncryptor(gc *gin.Context) (encryptor *utilEnc.AesEncryptor, err error) {
 
-	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
-	if !exist {
-		err = fmt.Errorf("加密器不存在")
+	encryptorTemp, err := ApiCheckGetEncryptor(gc)
+	if nil != err {
 		return
 	}
-	encryptorType := gc.GetString(ApiCheckEncryptorTypeKey)
-	if utilEnc.ApiDataEncryptorTypeAes != encryptorType {
+	if utilEnc.ApiDataEncryptorTypeAes != encryptorTemp.EncryptorType() {
 		err = fmt.Errorf("加密器类型不是AES")
 		return
 	}
@@ -140,13 +123,11 @@ func ApiCheckGetAesEncryptor(gc *gin.Context) (encryptor *utilEnc.AesEncryptor, 
 }
 func ApiCheckGetRsaEncryptor(gc *gin.Context) (encryptor *utilEnc.RsaEncryptor, err error) {
 
-	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
-	if !exist {
-		err = fmt.Errorf("加密器不存在")
+	encryptorTemp, err := ApiCheckGetEncryptor(gc)
+	if nil != err {
 		return
 	}
-	encryptorType := gc.GetString(ApiCheckEncryptorTypeKey)
-	if utilEnc.ApiDataEncryptorTypeRsa != encryptorType {
+	if utilEnc.ApiDataEncryptorTypeRsa != encryptorTemp.EncryptorType() {
 		err = fmt.Errorf("加密器类型不是RSA")
 		return
 	}
@@ -158,20 +139,36 @@ func ApiCheckGetRsaEncryptor(gc *gin.Context) (encryptor *utilEnc.RsaEncryptor, 
 
 	return
 }
-func ApiCheckGetGmEncryptor(gc *gin.Context) (encryptor *utilEnc.GmEncryptor, err error) {
+func ApiCheckGetGmSm2Encryptor(gc *gin.Context) (encryptor *utilEnc.GmSm2Encryptor, err error) {
 
-	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
-	if !exist {
-		err = fmt.Errorf("加密器不存在")
+	encryptorTemp, err := ApiCheckGetEncryptor(gc)
+	if nil != err {
 		return
 	}
-	encryptorType := gc.GetString(ApiCheckEncryptorTypeKey)
-	if utilEnc.ApiDataEncryptorTypeGm != encryptorType {
-		err = fmt.Errorf("加密器类型不是GM")
+	if utilEnc.ApiDataEncryptorTypeGmSm2 != encryptorTemp.EncryptorType() {
+		err = fmt.Errorf("加密器类型不是GM_SM2")
 		return
 	}
 
-	encryptor, ok := encryptorTemp.(*utilEnc.GmEncryptor)
+	encryptor, ok := encryptorTemp.(*utilEnc.GmSm2Encryptor)
+	if !ok {
+		err = fmt.Errorf("加密器类型错误")
+	}
+
+	return
+}
+func ApiCheckGetGmSm4Encryptor(gc *gin.Context) (encryptor *utilEnc.GmSm4Encryptor, err error) {
+
+	encryptorTemp, err := ApiCheckGetEncryptor(gc)
+	if nil != err {
+		return
+	}
+	if utilEnc.ApiDataEncryptorTypeGmSm4 != encryptorTemp.EncryptorType() {
+		err = fmt.Errorf("加密器类型不是GM_SM4")
+		return
+	}
+
+	encryptor, ok := encryptorTemp.(*utilEnc.GmSm4Encryptor)
 	if !ok {
 		err = fmt.Errorf("加密器类型错误")
 	}
