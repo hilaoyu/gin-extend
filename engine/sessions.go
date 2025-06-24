@@ -32,7 +32,17 @@ func (e *GinEngine) UseSessions(store sessions.Store, name string, options sessi
 }
 
 func GetSession(c *gin.Context) (session sessions.Session, err error) {
-	session = c.MustGet(GinExtendSessionKey).(sessions.Session)
+	temp, exist := c.Get(GinExtendSessionKey)
+	if !exist || nil == temp {
+		err = fmt.Errorf("session not exist")
+		return
+	}
+	var ok = false
+	session, ok = temp.(sessions.Session)
+	if !ok {
+		err = fmt.Errorf("session data error")
+		return
+	}
 	if nil == session {
 		err = fmt.Errorf("session not fond")
 		return
