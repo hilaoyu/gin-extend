@@ -8,17 +8,23 @@ import (
 	"time"
 )
 
-const ApiCheckApiDataKey = "_api_check_api_data"
+const ApiCheckEnDataKey = "_api_check_en_data"
 const ApiCheckEncryptorKey = "_api_check_encryptor"
+
+type ApiCheckDeDataBasic struct {
+	DataId       string `json:"_data_id"`
+	Timestamp    int64  `json:"_timestamp"`
+	TimestampOld int64  `json:"timestamp"`
+}
 
 var (
 	dataIdCacheApiCheck = utilCache.NewCache("_api_check_api_data_id_", time.Duration(5)*time.Minute).RegisterStoreMemory(10000)
 )
 
-func apiCheckGetDataFromGc(gc *gin.Context) (apiData string, appId string, err error) {
+func ApiCheckGetEnDataFromGc(gc *gin.Context) (enData string, appId string, err error) {
 	if "get" == gc.Request.Method {
 		appId = gc.DefaultQuery("app_id", "")
-		apiData = gc.DefaultQuery("data", "")
+		enData = gc.DefaultQuery("data", "")
 	} else {
 		var input = struct {
 			AppId string `json:"app_id,omitempty" form:"app_id"`
@@ -31,11 +37,12 @@ func apiCheckGetDataFromGc(gc *gin.Context) (apiData string, appId string, err e
 		}
 
 		appId = input.AppId
-		apiData = input.Data
+		enData = input.Data
 	}
 	return
 }
 func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, gc *gin.Context, debug ...bool) (err error) {
+
 	data := struct {
 		DataId       string `json:"_data_id"`
 		Timestamp    int64  `json:"_timestamp"`
@@ -77,16 +84,17 @@ func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, gc *gin.Contex
 	return
 }
 
-func apiCheckSetEnData(gc *gin.Context, apiData string) {
-	gc.Set(ApiCheckApiDataKey, apiData)
+func apiCheckSetEnData(gc *gin.Context, data string) {
+	gc.Set(ApiCheckEnDataKey, data)
 }
+
 func apiCheckSetEncryptor(gc *gin.Context, encryptor utilEnc.ApiDataEncryptor) {
 	gc.Set(ApiCheckEncryptorKey, encryptor)
 
 }
 
 func ApiCheckGetEnData(gc *gin.Context) string {
-	return gc.GetString(ApiCheckApiDataKey)
+	return gc.GetString(ApiCheckEnDataKey)
 }
 func ApiCheckGetEncryptor(gc *gin.Context) (encryptor utilEnc.ApiDataEncryptor, err error) {
 	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
@@ -182,13 +190,12 @@ func ApiCheckDecryptData(gc *gin.Context, v interface{}) (err error) {
 		err = fmt.Errorf("密文数据为空")
 		return
 	}
-
 	encryptor, err := ApiCheckGetEncryptor(gc)
 	if nil != err {
 		return
 	}
-
 	err = encryptor.ApiDataDecrypt(enData, v)
+
 	return
 }
 func ApiCheckEncryptData(gc *gin.Context, data interface{}) (enData string, err error) {

@@ -7,21 +7,13 @@ import (
 	"github.com/hilaoyu/go-utils/utilEnc"
 )
 
-type GetRsaKeyFunc func(appId string, gc *gin.Context) (publicKey []byte, privateKey []byte, err error)
+type GetRsaKeyFunc func(gc *gin.Context) (publicKey []byte, privateKey []byte, enData string, err error)
 
 func ApiCheckRsaHandler(getRsaKey GetRsaKeyFunc, debug ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		response := engine.GetResponse(c)
 
-		apiData, appId, err := apiCheckGetDataFromGc(c)
-		if err != nil {
-			response.Failed(err.Error()).RenderApiJson(c)
-			c.Abort()
-			return
-		}
-		//fmt.Println(appId, apiData)
-
-		publicKey, privateKey, err := getRsaKey(appId, c)
+		publicKey, privateKey, apiData, err := getRsaKey(c)
 
 		if err != nil {
 			response.Failed(fmt.Sprintf("读取解密密钥错误: %v", err)).RenderApiJson(c)

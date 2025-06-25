@@ -7,23 +7,14 @@ import (
 	"github.com/hilaoyu/go-utils/utilEnc"
 )
 
-type GetAesSecretFunc func(appId string, gc *gin.Context) (secret string, err error)
+type GetAesSecretAndEnDataFunc func(gc *gin.Context) (secret string, enData string, err error)
 
-func ApiCheckAesHandler(getSecret GetAesSecretFunc, debug ...bool) gin.HandlerFunc {
+func ApiCheckAesHandler(getSecret GetAesSecretAndEnDataFunc, debug ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		response := engine.GetResponse(c)
 
-		apiData, appId, err := apiCheckGetDataFromGc(c)
-		if err != nil {
-			response.Failed(err.Error()).RenderApiJson(c)
-			c.Abort()
-			return
-		}
-
-		//fmt.Println(appId, apiData)
-
-		secret, err := getSecret(appId, c)
+		secret, apiData, err := getSecret(c)
 		if err != nil {
 			response.Failed(fmt.Sprintf("获取密钥错误: %v", err)).RenderApiJson(c)
 			c.Abort()
