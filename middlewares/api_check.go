@@ -10,6 +10,7 @@ import (
 
 const ApiCheckEnDataKey = "_api_check_en_data"
 const ApiCheckEncryptorKey = "_api_check_encryptor"
+const ApiCheckAppIdKey = "_api_check_app_id"
 
 type ApiCheckDeDataBasic struct {
 	DataId       string `json:"_data_id"`
@@ -39,6 +40,7 @@ func ApiCheckGetEnDataFromGc(gc *gin.Context) (enData string, appId string, err 
 		appId = input.AppId
 		enData = input.Data
 	}
+	ApiCheckSetAppId(gc, appId)
 	return
 }
 func apiCheck(apiData string, encryptor utilEnc.ApiDataEncryptor, gc *gin.Context, debug ...bool) (err error) {
@@ -95,6 +97,14 @@ func apiCheckSetEncryptor(gc *gin.Context, encryptor utilEnc.ApiDataEncryptor) {
 
 func ApiCheckGetEnData(gc *gin.Context) string {
 	return gc.GetString(ApiCheckEnDataKey)
+}
+func ApiCheckSetAppId(gc *gin.Context, appId string) {
+	gc.Set(ApiCheckAppIdKey, appId)
+	return
+}
+func ApiCheckGetAppId(gc *gin.Context) (appId string) {
+	appId = gc.GetString(ApiCheckAppIdKey)
+	return
 }
 func ApiCheckGetEncryptor(gc *gin.Context) (encryptor utilEnc.ApiDataEncryptor, err error) {
 	encryptorTemp, exist := gc.Get(ApiCheckEncryptorKey)
