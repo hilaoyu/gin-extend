@@ -21,7 +21,7 @@ func ApiCheckGmSm4Handler(getSecret GetGmSm4SecretFunc, debug ...bool) gin.Handl
 			return
 		}
 
-		encryptor := utilEnc.NewAesEncryptor(secret)
+		encryptor := utilEnc.NewGmSm4Encryptor([]byte(secret))
 
 		err = apiCheck(apiData, encryptor, c, debug...)
 		if err != nil {
