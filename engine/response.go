@@ -284,6 +284,21 @@ func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
 	return
 }
 
+func (res *Response) SendFileBytes( filename string, contentType string, data []byte, c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
+	}
+	if nil == gc {
+		return
+	}
+
+	gc.Header("Content-Description", "File Transfer")
+	gc.Header("Content-Disposition", "attachment; filename="+filename)
+	gc.Data(200, contentType, data)
+}
+
+
 func (res *Response) Redirect(code int, location string, c ...*gin.Context) {
 	gc := res.gc
 	if len(c) > 0 {
