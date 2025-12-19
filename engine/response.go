@@ -3,9 +3,11 @@ package engine
 import (
 	"encoding/gob"
 	"fmt"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/hilaoyu/go-utils/utilHttp"
-	"strings"
+	"github.com/hilaoyu/go-utils/utilRandom"
 )
 
 const (
@@ -24,7 +26,7 @@ type Response struct {
 	alertMessages []*ResponseAlertMessage
 
 	debugs    []string
-	errors    []string
+	errors    map[string]string
 	variables ResponseVariables
 	data      interface{}
 }
@@ -66,7 +68,7 @@ func GetResponse(gc *gin.Context) (response *Response) {
 	if nil != session {
 		sessionErrors := session.Get(ContextSessionKeyErrors)
 		if nil != sessionErrors {
-			if errors, ok := sessionErrors.([]string); ok {
+			if errors, ok := sessionErrors.(map[string]string); ok {
 				response.errors = errors
 			}
 		}
@@ -154,8 +156,12 @@ func (res *Response) WithDebug(v string) *Response {
 	res.debugs = append(res.debugs, v)
 	return res
 }
-func (res *Response) WithError(v string) *Response {
-	res.errors = append(res.errors, v)
+func (res *Response) WithError(v string, k string) *Response {
+	k = strings.TrimSpace(k)
+	if "" == k {
+		k = utilRandom.UniqId("")
+	}
+	res.errors[k] = v
 	return res
 }
 func (res *Response) WithVariables(v interface{}, k string) *Response {
@@ -284,7 +290,7 @@ func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
 	return
 }
 
-func (res *Response) SendFileBytes( filename string, contentType string, data []byte, c ...*gin.Context) {
+func (res *Response) SendFileBytes(filename string, contentType string, data []byte, c ...*gin.Context) {
 	gc := res.gc
 	if len(c) > 0 {
 		gc = c[0]
@@ -297,7 +303,6 @@ func (res *Response) SendFileBytes( filename string, contentType string, data []
 	gc.Header("Content-Disposition", "attachment; filename="+filename)
 	gc.Data(200, contentType, data)
 }
-
 
 func (res *Response) Redirect(code int, location string, c ...*gin.Context) {
 	gc := res.gc
