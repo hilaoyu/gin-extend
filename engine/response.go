@@ -157,6 +157,9 @@ func (res *Response) WithDebug(v string) *Response {
 	return res
 }
 func (res *Response) WithError(v string, k string) *Response {
+	if nil == res.errors {
+		res.errors = map[string]string{}
+	}
 	k = strings.TrimSpace(k)
 	if "" == k {
 		k = utilRandom.UniqId("")
