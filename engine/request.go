@@ -11,10 +11,7 @@ const (
 
 func ReqGetPager(gc *gin.Context, pageSize int) (pager *utilHttp.Paginator) {
 
-	pager = &utilHttp.Paginator{
-		Request: gc.Request,
-		PerPage: pageSize,
-	}
+	pager = utilHttp.NewPaginator(gc.Request, pageSize, nil)
 	gc.Set(ContextVariablesKeyPager, pager)
 	return
 }
