@@ -22,6 +22,7 @@ type Response struct {
 	gc            *gin.Context
 	status        bool
 	statusCode    int
+	resultCode    int
 	message       string
 	alertMessages []*ResponseAlertMessage
 
@@ -29,6 +30,7 @@ type Response struct {
 	errors    map[string]string
 	variables ResponseVariables
 	data      interface{}
+	headers   map[string]string
 }
 type ResponseVariables map[string]interface{}
 
@@ -122,6 +124,11 @@ func (res *Response) Failed(msg string, code ...int) *Response {
 	}
 	return res
 }
+func (res *Response) SetResultCode(code int) *Response {
+	res.resultCode = code
+	return res
+}
+
 
 func (res *Response) AlertSuccess(msg string) *Response {
 	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
@@ -179,15 +186,36 @@ func (res *Response) SetData(v interface{}) *Response {
 	res.data = v
 	return res
 }
+func (res *Response) WithHeader(v string, k string) *Response {
+	if nil == res.headers {
+		res.headers = map[string]string{}
+	}
+	k = strings.TrimSpace(k)
+	if "" == k {
+		return res
+	}
+	res.headers[k] = v
+	return res
+}
 
-func (res *Response) RenderJson(c *gin.Context) {
+func (res *Response) RenderHeaders(c *gin.Context) {
 	gc := c
-	if nil == gc {
-		gc = res.gc
+	if len(res.headers) > 0 {
+		for key, value := range res.headers {
+			gc.Header(key, value)
+		}
+	}
+	return
+}
+func (res *Response) RenderJson(c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
 	}
 	if nil == gc {
 		return
 	}
+
 	if nil != res.data {
 		gc.JSON(res.statusCode, res.data)
 		return
@@ -201,13 +229,14 @@ func (res *Response) RenderJson(c *gin.Context) {
 			data["errors"] = res.errors
 		}
 	}
+	res.RenderHeaders(gc)
 	gc.JSON(res.statusCode, data)
 	return
 }
-func (res *Response) RenderApiJson(c *gin.Context) {
-	gc := c
-	if nil == gc {
-		gc = res.gc
+func (res *Response) RenderApiJson(c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
 	}
 	if nil == gc {
 		return
@@ -215,7 +244,7 @@ func (res *Response) RenderApiJson(c *gin.Context) {
 
 	data := utilHttp.ApiDataJson{
 		Status:  res.status,
-		Code:    res.statusCode,
+		Code:    res.resultCode,
 		Message: res.message,
 		Errors:  res.errors,
 	}
@@ -229,6 +258,7 @@ func (res *Response) RenderApiJson(c *gin.Context) {
 	if len(res.errors) > 0 {
 		data.Errors = res.errors
 	}
+	res.RenderHeaders(gc)
 	gc.JSON(200, data)
 	return
 }
@@ -254,7 +284,7 @@ func (res *Response) RenderHtml(templateName string, c ...*gin.Context) {
 	if len(res.alertMessages) > 0 {
 		data["_alert_messages"] = res.alertMessages
 	}
-
+	res.RenderHeaders(gc)
 	gc.HTML(res.statusCode, templateName, data)
 	return
 }
@@ -293,6 +323,17 @@ func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
 	return
 }
 
+func (res *Response) SendFile(path string, name string, c ...*gin.Context) {
+	gc := res.gc
+	if len(c) > 0 {
+		gc = c[0]
+	}
+	if nil == gc {
+		return
+	}
+	res.RenderHeaders(gc)
+	gc.FileAttachment(path, name)
+}
 func (res *Response) SendFileBytes(filename string, contentType string, data []byte, c ...*gin.Context) {
 	gc := res.gc
 	if len(c) > 0 {
@@ -301,7 +342,7 @@ func (res *Response) SendFileBytes(filename string, contentType string, data []b
 	if nil == gc {
 		return
 	}
-
+	res.RenderHeaders(gc)
 	gc.Header("Content-Description", "File Transfer")
 	gc.Header("Content-Disposition", "attachment; filename="+filename)
 	gc.Data(200, contentType, data)
