@@ -129,7 +129,6 @@ func (res *Response) SetResultCode(code int) *Response {
 	return res
 }
 
-
 func (res *Response) AlertSuccess(msg string) *Response {
 	res.alertMessages = append(res.alertMessages, &ResponseAlertMessage{
 		AlertType:    "success",
@@ -207,11 +206,16 @@ func (res *Response) RenderHeaders(c *gin.Context) {
 	}
 	return
 }
-func (res *Response) RenderJson(c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
+func (res *Response) getGc(c ...*gin.Context) (gc *gin.Context) {
+	gc = res.gc
+	if len(c) > 0 && nil != c[0] {
 		gc = c[0]
 	}
+
+	return
+}
+func (res *Response) RenderJson(c ...*gin.Context) {
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -234,10 +238,7 @@ func (res *Response) RenderJson(c ...*gin.Context) {
 	return
 }
 func (res *Response) RenderApiJson(c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -258,15 +259,14 @@ func (res *Response) RenderApiJson(c ...*gin.Context) {
 	if len(res.errors) > 0 {
 		data.Errors = res.errors
 	}
+
 	res.RenderHeaders(gc)
+
 	gc.JSON(200, data)
 	return
 }
 func (res *Response) RenderHtml(templateName string, c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -290,10 +290,7 @@ func (res *Response) RenderHtml(templateName string, c ...*gin.Context) {
 }
 
 func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -324,10 +321,7 @@ func (res *Response) RenderErrorPage(errorType string, c ...*gin.Context) {
 }
 
 func (res *Response) SendFile(path string, name string, c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -335,10 +329,7 @@ func (res *Response) SendFile(path string, name string, c ...*gin.Context) {
 	gc.FileAttachment(path, name)
 }
 func (res *Response) SendFileBytes(filename string, contentType string, data []byte, c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -349,10 +340,7 @@ func (res *Response) SendFileBytes(filename string, contentType string, data []b
 }
 
 func (res *Response) Redirect(code int, location string, c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
@@ -379,10 +367,7 @@ func (res *Response) Redirect(code int, location string, c ...*gin.Context) {
 	return
 }
 func (res *Response) Abort(c ...*gin.Context) {
-	gc := res.gc
-	if len(c) > 0 {
-		gc = c[0]
-	}
+	gc := res.getGc(c...)
 	if nil == gc {
 		return
 	}
